@@ -31,12 +31,12 @@ if __name__ == "__main__":
     # time.sleep(5)
 
     frame = tello.read()
-    frame_num = 8
+    frame_num = 0
     if frame is None or frame.size == 0:
         print("No image available.")
     else:
         print("Image received!")
-        filename = "output/" + str(frame_num) + ".png"
+        filename = "../output_images/" + str(frame_num) + ".png"
         cv2.imwrite(filename, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         print("Saved " + filename)
 
