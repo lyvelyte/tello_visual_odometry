@@ -1,0 +1,5 @@
+command
+takeoff
+forward 30
+back 30
+land
