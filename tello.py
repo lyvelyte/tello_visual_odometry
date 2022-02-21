@@ -2,7 +2,7 @@ import socket
 import threading
 import time
 import numpy as np
-import libh264decoder
+import h264decoder
 
 class Tello:
     """Wrapper class to interact with the Tello drone."""
@@ -22,7 +22,7 @@ class Tello:
         """
 
         self.abort_flag = False
-        self.decoder = libh264decoder.H264Decoder()
+        self.decoder = h264decoder.H264Decoder()
         self.command_timeout = command_timeout
         self.imperial = imperial
         self.response = None  
@@ -58,7 +58,7 @@ class Tello:
 
     def __del__(self):
         """Closes the local socket."""
-
+        print("tello object deconstructor called.")
         self.socket.close()
         self.socket_video.close()
     
@@ -95,16 +95,21 @@ class Tello:
         Runs as a thread, sets self.frame to the most recent frame Tello captured.
 
         """
-        packet_data = ""
+        # packet_data = ""
+        packet_data = bytearray()
         while True:
             try:
                 res_string, ip = self.socket_video.recvfrom(2048)
-                packet_data += res_string
+                # packet_data += str(res_string)
+                # print("\n\n res_string type is " + str(type(res_string)) + "\n\n")
+                # exit()
+                packet_data += bytearray(res_string)
                 # end of frame
                 if len(res_string) != 1460:
                     for frame in self._h264_decode(packet_data):
                         self.frame = frame
-                    packet_data = ""
+                    # packet_data = ""
+                    packet_data = bytearray()
 
             except socket.error as exc:
                 print ("Caught exception socket.error : %s" % exc)
@@ -118,14 +123,18 @@ class Tello:
         :return: a list of decoded frame
         """
         res_frame_list = []
-        frames = self.decoder.decode(packet_data)
+        # print("\n\npacket_data type is " + str(type(packet_data)) + "\n\n")
+        # exit()
+        frames = self.decoder.decode(bytes(packet_data))
         for framedata in frames:
             (frame, w, h, ls) = framedata
             if frame is not None:
                 # print 'frame size %i bytes, w %i, h %i, linesize %i' % (len(frame), w, h, ls)
 
-                frame = np.fromstring(frame, dtype=np.ubyte, count=len(frame), sep='')
-                frame = (frame.reshape((h, ls / 3, 3)))
+                # frame = np.fromstring(frame, dtype=np.ubyte, count=len(frame), sep='')
+                # frame = (frame.reshape((h, ls / 3, 3)))
+                frame = np.frombuffer(frame, dtype=np.ubyte, count=len(frame))
+                frame = (frame.reshape((h, ls // 3, 3)))
                 frame = frame[:, :w, :]
                 res_frame_list.append(frame)
 

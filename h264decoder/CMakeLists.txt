@@ -1,40 +1,61 @@
-cmake_minimum_required(VERSION 2.8)
-project(python_h264decoder)
+cmake_minimum_required(VERSION 3.14)
+project(h264decoder)
 
-set(Python_ADDITIONAL_VERSIONS 2.7)
+set(CMAKE_BUILD_TYPE Debug)
 
-if(UNIX AND NOT APPLE)
-        set(LINUX TRUE)
+set (BuildExamples False CACHE BOOL "Build the examples")
+
+# Not working on Windows
+#   find_package(PkgConfig REQUIRED)
+#   pkg_check_modules(libswscale REQUIRED libswscale)
+#   pkg_check_modules(libavutil REQUIRED libavutil)
+#   pkg_check_modules(libavcodec REQUIRED libavcodec)
+#
+# Not on Ubuntu ...
+# find_package(FFMPEG REQUIRED swscale avutil avcodec)
+
+# So we do it more low level
+find_path( AVCODEC_INCLUDE_DIR libavcodec/avcodec.h )
+find_library( AVCODEC_LIBRARY avcodec )
+find_path( AVUTIL_INCLUDE_DIR libavutil/avutil.h )
+find_library( AVUTIL_LIBRARY avutil )
+find_path( SWSCALE_INCLUDE_DIR libswscale/swscale.h )
+find_library( SWSCALE_LIBRARY swscale )
+
+set(FFMPEG_LIBRARIES ${AVCODEC_LIBRARY} ${AVUTIL_LIBRARY} ${SWSCALE_LIBRARY})
+set(FFMPEG_INCLUDE_DIR ${AVCODEC_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR} ${SWSCALE_INCLUDE_DIR})
+
+
+find_package(pybind11)
+if(pybind11_FOUND)
+  message("Using existing pybind11 v${pybind11_VERSION}")
+else()
+  message("Fetching pybind11")
+  include(FetchContent)
+  FetchContent_Declare(
+    pybind11
+    GIT_REPOSITORY https://github.com/pybind/pybind11
+    GIT_TAG v2.5.0)
+  FetchContent_MakeAvailable(pybind11)
 endif()
 
-if(APPLE)
-	set(CMAKE_SHARED_LIBRARY_SUFFIX ".so")
-	find_package(Boost REQUIRED COMPONENTS python27)
-elseif(LINUX)
-	find_package(Boost REQUIRED COMPONENTS "python")
-endif(APPLE)
+
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CXX_STANDARD 14)
+if (NOT WIN32)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
+endif()
 
 
+add_library(h264decoderlib STATIC src/h264decoder.cpp src/h264decoder.hpp)
+target_sources(h264decoderlib PUBLIC src/h264decoder.hpp)
+target_link_libraries(h264decoderlib PUBLIC ${FFMPEG_LIBRARIES})
+target_include_directories(h264decoderlib PUBLIC ${FFMPEG_INCLUDE_DIR})
+target_include_directories(h264decoderlib PUBLIC "src")
 
-find_package(PythonInterp 2.7 REQUIRED)
-find_package(PythonLibs 2.7 REQUIRED )
+pybind11_add_module(h264decoder src/h264decoder_python.cpp)
+target_link_libraries(h264decoder PRIVATE h264decoderlib)
 
-
-include_directories(${PYTHON_INCLUDE_DIRS})
-include_directories(${Boost_INCLUDE_DIRS})
-link_directories(${Boost_LIBRARY_DIRS})
-
-add_compile_options ("-std=c++0x")
-
-add_library(h264decoder SHARED h264decoder.cpp h264decoder_python.cpp)
-
-if(APPLE)
-	target_link_libraries(h264decoder avcodec swscale avutil ${Boost_LIBRARIES} ${Boost_PYTHON_LIBRARY_RELEASE} ${PYTHON_LIBRARIES})
-elseif(LINUX)
-	target_link_libraries(h264decoder avcodec swscale avutil ${Boost_PYTHON_LIBRARY_RELEASE} ${PYTHON_LIBRARIES})
-endif(APPLE)
-
-add_custom_command(TARGET h264decoder POST_BUILD
-                   COMMAND ${CMAKE_COMMAND} -E create_symlink 
-                   ${CMAKE_BINARY_DIR}/libh264decoder.so ${CMAKE_SOURCE_DIR}/libh264decoder.so)
-install(TARGETS h264decoder LIBRARY DESTINATION .)
+if (BuildExamples)
+  add_subdirectory(examples)
+endif ()
