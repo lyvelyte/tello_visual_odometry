@@ -6,10 +6,14 @@ import time
 import cv2 
 import numpy as np
 import rospy
+import std_msgs.msg
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import camera_info_manager as cim
 from sensor_msgs.msg import CameraInfo
+import tf2_ros
+import tf2_msgs.msg
+import geometry_msgs.msg
 
 class TelloVisualOdometry():
     def __init__(self):
@@ -23,9 +27,14 @@ class TelloVisualOdometry():
         
         # Publishers
         self.pub = rospy.Publisher('camera/image_raw', Image, queue_size=1)
-        self.caminfo = cim.loadCalibrationFile('/home/nerf/Documents/tello_visual_odometry/calibration.yaml', 'camera')
-        self.pub_caminfo = rospy.Publisher('camera/camera_info', CameraInfo, queue_size=1, latch=True)                
+        self.caminfo = cim.loadCalibrationFile('calibration.yaml', 'camera')
+        self.pub_caminfo = rospy.Publisher('camera/camera_info', CameraInfo, queue_size=1, latch=True)    
+
+        self.caminfo.header.frame_id = "tello_camera"
+        self.caminfo.header.stamp = rospy.Time.now()
         self.pub_caminfo.publish(self.caminfo)
+
+        self.pub_tf = rospy.Publisher("/tf", tf2_msgs.msg.TFMessage, queue_size=1)
 
         # Setup Tello
         self.tello = Tello('', 8889)  
@@ -50,8 +59,33 @@ class TelloVisualOdometry():
 
                 converted_image = Image()
                 converted_image = self.br.cv2_to_imgmsg(frame, encoding='rgb8')
+              
+                frame_id = "tello_camera"
+
+                now = rospy.Time.now()
+                self.caminfo.header.stamp = now
+                self.caminfo.header.frame_id = frame_id
+                converted_image.header.frame_id = frame_id
+                converted_image.header.stamp = now
+
                 self.pub.publish(converted_image)
                 self.pub_caminfo.publish(self.caminfo)
+
+                t = geometry_msgs.msg.TransformStamped()
+                t.header.frame_id = frame_id
+                t.header.stamp = now
+                t.child_frame_id = "tello_camera_child"
+                t.transform.translation.x = 0.0
+                t.transform.translation.y = 0.0
+                t.transform.translation.z = 0.0
+  
+                t.transform.rotation.x = 0.0
+                t.transform.rotation.y = 0.0
+                t.transform.rotation.z = 0.0
+                t.transform.rotation.w = 0.0
+  
+                tfm = tf2_msgs.msg.TFMessage([t])
+                self.pub_tf.publish(tfm)
 
                 if self.save_images:                
                     filename = "../output_images/" + str(frame_num) + ".png"
