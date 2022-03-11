@@ -34,6 +34,6 @@ Navigation code for tello edu drone using visual odometry and the AR Toolkit
 1.  rosrun camera_calibration cameracalibrator.py --size 8x6 --square 0.025 image:=/camera/image_raw
 
 ## Running
-1. roslaunch ar_pose ar_pose_single.launch
+1. roslaunch ar_pose ar_pose_tello.launch
 2. python main.py
 

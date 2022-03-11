@@ -1,0 +1,9 @@
+digraph G {
+"tello_drone" -> "tello_camera"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 25.369 Hz\nMost recent transform: 1646961815.895 ( 0.018 sec old)\nBuffer length: 4.967 sec\n"];
+"ar_marker" -> "world"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 30.201 Hz\nMost recent transform: 1646961815.895 ( 0.018 sec old)\nBuffer length: 4.967 sec\n"];
+"tello_camera" -> "ar_marker"[label="Broadcaster: /ar_pose\nAverage rate: 30.201 Hz\nMost recent transform: 1646961815.895 ( 0.018 sec old)\nBuffer length: 4.967 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1646961815.913"[ shape=plaintext ] ;
+ }->"tello_drone";
+}
