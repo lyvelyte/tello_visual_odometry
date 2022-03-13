@@ -32,10 +32,22 @@ class TelloVisualOdometry():
 
     def __init__(self):
         # Parameters
-        self.camera_only = False
+        self.camera_only = True
         self.loop_rate = rospy.Rate(30)
         self.drone_speed = int(100) #Speed of the Tello drone in cm/s (10-100)
         self.drone_speed = np.clip(self.drone_speed, 10, 100)
+        
+        # Set waypoints
+        self.final_goal_reached = False
+        self.goal_index = 0
+        self.waypoints = []
+        half_l = 0.3
+        self.waypoints.append([0, 0, 0])
+        self.waypoints.append([0, half_l, 0]) 
+        self.waypoints.append([-half_l, half_l, 0])
+        self.waypoints.append([-half_l, -half_l, 0])
+        self.waypoints.append([half_l, -half_l, 0])
+        self.waypoints.append([0, 0, 0])
 
         # CV Bridge
         self.image = None
@@ -57,8 +69,6 @@ class TelloVisualOdometry():
         self.send_command_until_ack('command')
         self.send_command_until_ack('streamon')
 
-        self.goal_reached = False
-
     def start(self):
         if not self.camera_only:
             # Takeoff 
@@ -74,7 +84,9 @@ class TelloVisualOdometry():
 
         # Main Loop 
         frame_num = 0
-        while (not rospy.is_shutdown() and not self.goal_reached):
+        while (not rospy.is_shutdown() and not self.final_goal_reached):
+            goal_changed = False
+
             # Attempt to read image from Tello's Camera
             frame = self.tello.read()
             
@@ -140,7 +152,7 @@ class TelloVisualOdometry():
                 t.header.frame_id = "ar_marker_world_orientation"
                 t.child_frame_id = "world"
                 t.header.stamp = cur_timestamp
-                t.transform.translation.x = 1.5
+                t.transform.translation.x = 1.0
                 t.transform.translation.y = 0.0
                 t.transform.translation.z = 0.0
                 rot_quat = tf.transformations.quaternion_from_euler(0, 0, np.pi)
@@ -151,10 +163,27 @@ class TelloVisualOdometry():
                 tf_msg = tf2_msgs.msg.TFMessage([t])
                 self.pub_tf.publish(tf_msg)
 
-                # Listen for the transform from the drone to the world, navigate accordingly
+                # Construct and publish the varying tf message to transform from the world to the current goal. 
+                t = geometry_msgs.msg.TransformStamped()
+                t.header.frame_id = "world"
+                t.child_frame_id = "goal"
+                t.header.stamp = cur_timestamp
+                t.transform.translation.x = self.waypoints[self.goal_index][0]
+                t.transform.translation.y = self.waypoints[self.goal_index][1]
+                t.transform.translation.z = self.waypoints[self.goal_index][2]
+                rot_quat = tf.transformations.quaternion_from_euler(0, 0, 0)
+                t.transform.rotation.x = rot_quat[0]
+                t.transform.rotation.y = rot_quat[1]
+                t.transform.rotation.z = rot_quat[2]
+                t.transform.rotation.w = rot_quat[3]
+                tf_msg = tf2_msgs.msg.TFMessage([t])
+                self.pub_tf.publish(tf_msg)
+
+                # Visual Navigation
                 try:
-                    if frame_num > 30:
-                        (trans,_) = self.tf_listener.lookupTransform("/tello_drone", "/world", rospy.Time(0))
+                    if frame_num > 100:
+                        # (trans,_) = self.tf_listener.lookupTransform("/tello_drone", "/world", rospy.Time(0))
+                        (trans,_) = self.tf_listener.lookupTransform("/tello_drone", "/goal", rospy.Time(0))
                         (_,rot) = self.tf_listener.lookupTransform("/world", "/tello_drone", rospy.Time(0))
                         
                         cur_trans_hash = hash(str(trans) + str(rot))
@@ -186,17 +215,22 @@ class TelloVisualOdometry():
 
                             max_t = max(abs(x_cm), abs(y_cm), abs(z_cm))
                             if (yaw < 10) and (max_t < 20):
-                                self.goal_reached = True
+                                print("Goal {} reached! Moving to next goal.".format(self.goal_index))
+                                self.goal_index = self.goal_index + 1
+                                goal_changed = True
+                                frame_num = 0
+                                if self.goal_index == len(self.waypoints):
+                                    self.final_goal_reached = True
 
                             # Rotate first to align with world space.
-                            if not self.camera_only and not self.goal_reached:
+                            if not self.camera_only and not self.final_goal_reached and not goal_changed:
                                 # Tranlate drone
                                 print("Adjusting translation, moving to x={}, y={}, z={} relative to the current position. ".format(x_cm, y_cm, z_cm))
-                                self.send_command_until_ack('go  {} {} {} {}'.format(x_cm, y_cm, z_cm, self.drone_speed))
+                                self.send_command_until_ack('go {} {} {} {}'.format(x_cm, y_cm, z_cm, self.drone_speed))
                           
                                 d = np.sqrt(x_cm**2 + y_cm**2 + z_cm**2)
                                 time_to_move = d / self.drone_speed
-                                rospy.sleep(time_to_move + 10.0)
+                                rospy.sleep(time_to_move + 5.0)
 
                                 # Rotate drone
                                 if yaw > 0:
@@ -205,7 +239,8 @@ class TelloVisualOdometry():
                                 else:
                                     print("Rotating drone counter-clockwise {} degrees.".format(abs(yaw)))
                                     self.send_command_until_ack('ccw ' + str(abs(yaw)))
-                                rospy.sleep(10.0)
+                                rospy.sleep(5.0)
+                            
                 except ValueError as err:
                     print(err.args)
                 except:
@@ -222,8 +257,8 @@ class TelloVisualOdometry():
         # Stop drone video
         self.tello.video_freeze()
 
-        if self.goal_reached:
-            print("\n\n\nGoal reached!!! Landing drone. =)\n\n\n")
+        if self.final_goal_reached:
+            print("\n\n\nFinal goal reached!!! Landing drone. =)\n\n\n")
 
         # Land the drone.
         if not self.camera_only:

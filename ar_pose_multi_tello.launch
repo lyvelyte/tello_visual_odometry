@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="rviz" type="rviz" name="rviz"
+    args="-d $(find ar_pose)/launch/live_multi.rviz"/>
+  <node ns="camera" pkg="image_proc" type="image_proc" name="image_proc"/>
+  <node name="ar_pose" pkg="ar_pose" type="ar_multi" respawn="false"
+    output="screen">
+    <param name="marker_pattern_list" type="string"
+      value="$(find ar_pose)/data/object_4x4_tello"/>
+    <param name="threshold" type="int" value="100"/>
+  </node>
+</launch>

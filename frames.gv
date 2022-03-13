@@ -1,10 +1,11 @@
 digraph G {
-"tello_drone" -> "tello_camera"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 26.554 Hz\nMost recent transform: 1647003836.151 ( 0.047 sec old)\nBuffer length: 4.933 sec\n"];
-"ar_marker" -> "ar_marker_world_orientation"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 26.578 Hz\nMost recent transform: 1647003836.184 ( 0.014 sec old)\nBuffer length: 4.967 sec\n"];
-"tello_camera" -> "ar_marker"[label="Broadcaster: /ar_pose\nAverage rate: 30.202 Hz\nMost recent transform: 1647003836.184 ( 0.014 sec old)\nBuffer length: 4.967 sec\n"];
-"ar_marker_world_orientation" -> "world"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 30.202 Hz\nMost recent transform: 1647003836.184 ( 0.014 sec old)\nBuffer length: 4.967 sec\n"];
+"4x4_1" -> "ar_marker_world_orientation"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 27.383 Hz\nMost recent transform: 1647191021.392 ( 0.012 sec old)\nBuffer length: 4.967 sec\n"];
+"tello_camera" -> "4x4_1"[label="Broadcaster: /ar_pose\nAverage rate: 30.202 Hz\nMost recent transform: 1647191021.392 ( 0.012 sec old)\nBuffer length: 4.967 sec\n"];
+"ar_marker_world_orientation" -> "world"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 29.195 Hz\nMost recent transform: 1647191021.392 ( 0.012 sec old)\nBuffer length: 4.967 sec\n"];
+"world" -> "goal"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 30.202 Hz\nMost recent transform: 1647191021.392 ( 0.012 sec old)\nBuffer length: 4.967 sec\n"];
+"tello_drone" -> "tello_camera"[label="Broadcaster: /Tello_Visual_Odometry_Node\nAverage rate: 28.776 Hz\nMost recent transform: 1647191021.358 ( 0.046 sec old)\nBuffer length: 4.900 sec\n"];
 edge [style=invis];
  subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
-"Recorded at time: 1647003836.198"[ shape=plaintext ] ;
+"Recorded at time: 1647191021.404"[ shape=plaintext ] ;
  }->"tello_drone";
 }
