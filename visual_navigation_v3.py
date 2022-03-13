@@ -29,13 +29,13 @@ class TelloVisualOdometry():
         self.final_goal_reached = False
         self.goal_index = 0
         self.waypoints = []
-        half_l = 0.5
-        self.waypoints.append([-half_l/2, 0, 0])
-        self.waypoints.append([0, half_l, 0]) 
-        self.waypoints.append([-half_l, half_l, 0])
-        self.waypoints.append([-half_l, -half_l, 0])
-        self.waypoints.append([0, -half_l, 0])
-        self.waypoints.append([-half_l/2, 0, 0])
+        half_box_len = 0.5 # Half the length of the box in meters. 
+        self.waypoints.append([0, 0, 0])    # Start at Center
+        self.waypoints.append([half_box_len, half_box_len, 0]) # Top Left
+        self.waypoints.append([-half_box_len, half_box_len, 0]) # Bottom Left
+        self.waypoints.append([-half_box_len, -half_box_len, 0]) # Bottom Right
+        self.waypoints.append([half_box_len, -half_box_len, 0]) # Top Right
+        self.waypoints.append([0, 0, 0]) # Return to Center
 
         # CV Bridge
         self.image = None
@@ -243,7 +243,7 @@ class TelloVisualOdometry():
             # Takeoff 
             self.send_command_until_ack('takeoff')
             self.is_drone_in_the_air = True
-            time.sleep(5)
+            rospy.sleep(5)
 
             # Set Tello speed. 
             self.send_command_until_ack('speed ' + str(self.drone_speed))
@@ -291,7 +291,7 @@ class TelloVisualOdometry():
         # Land the drone.
         if not self.camera_only:
             self.send_command_until_ack('land') 
-            time.sleep(5)
+            rospy.sleep(5)
             self.is_drone_in_the_air = False
             print("Drone has landed.")
 
