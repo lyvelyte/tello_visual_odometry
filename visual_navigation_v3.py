@@ -31,11 +31,17 @@ class TelloVisualOdometry():
         self.waypoints = []
         half_box_len = 0.5 # Half the length of the box in meters. 
         self.waypoints.append([0, 0, 0])    # Start at Center
+        
         self.waypoints.append([half_box_len, half_box_len, 0]) # Top Left
         self.waypoints.append([-half_box_len, half_box_len, 0]) # Bottom Left
         self.waypoints.append([-half_box_len, -half_box_len, 0]) # Bottom Right
         self.waypoints.append([half_box_len, -half_box_len, 0]) # Top Right
-        self.waypoints.append([0, 0, 0]) # Return to Center
+
+        self.waypoints.append([half_box_len, half_box_len, 0]) # Top Left
+        self.waypoints.append([-half_box_len, half_box_len, 0]) # Bottom Left
+        self.waypoints.append([-half_box_len, -half_box_len, 0]) # Bottom Right
+        self.waypoints.append([half_box_len, -half_box_len, 0]) # Top Right
+        
 
         # CV Bridge
         self.image = None
@@ -54,13 +60,15 @@ class TelloVisualOdometry():
         self.tf_listener = tf.TransformListener()
 
         # Connect to Tello
-        self.is_drone_in_the_air = False
         self.command_lock = False
         self.tello = Tello('', 8889)  
         self.send_command_until_ack('command')
         self.send_command_until_ack('streamon')
 
     def check_battery(self):
+        print("Checking battery percentage.")
+        while self.command_lock:
+            rospy.sleep(0.1)
         if not self.command_lock:
             self.command_lock = True
 
@@ -140,7 +148,6 @@ class TelloVisualOdometry():
                         goal_changed = True
                         if self.goal_index + 1 == len(self.waypoints):
                             self.final_goal_reached = True
-                            print("Final goal reached! Attempting to land drone.")
                             self.end()
                         else:
                             self.goal_index = self.goal_index + 1
@@ -242,7 +249,6 @@ class TelloVisualOdometry():
         if not self.camera_only:
             # Takeoff 
             self.send_command_until_ack('takeoff')
-            self.is_drone_in_the_air = True
             rospy.sleep(5)
 
             # Set Tello speed. 
@@ -285,20 +291,18 @@ class TelloVisualOdometry():
         if self.final_goal_reached:
             print("\n\n\nFinal goal reached!!! Landing drone. =)\n\n\n")
 
-        # Print final battery percentage.
-        self.check_battery()
-
         # Land the drone.
         if not self.camera_only:
             self.send_command_until_ack('land') 
             rospy.sleep(5)
-            self.is_drone_in_the_air = False
             print("Drone has landed.")
 
+        # Print final battery percentage.
+        self.check_battery()
+        rospy.sleep(5)
+        
     def __del__(self):
         print("TelloVisualOdometry object deconstructor called.")
-        if self.is_drone_in_the_air:
-            self.end()
 
         # Delete tello object to close socket. 
         del self.tello
@@ -308,4 +312,5 @@ if __name__ == "__main__":
     rospy.init_node("Tello_Visual_Odometry_Node", anonymous=False)
     tello_node = TelloVisualOdometry()
     tello_node.start()
+    tello_node.end()
     del tello_node 

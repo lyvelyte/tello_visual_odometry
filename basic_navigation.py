@@ -30,25 +30,27 @@ class TelloVisualOdometry():
         half_box_len = 0.5 # Half the length of the box in meterss
         # Start with Drone placed at the center. 
         self.relative_waypoints.append([half_box_len, half_box_len, 0]) # Center to Top Left 
-        
         self.relative_waypoints.append([-2*half_box_len, 0, 0]) # Top Left to Bottom Left
         self.relative_waypoints.append([0, -2*half_box_len, 0]) # Bottom Left to Bottom Right
         self.relative_waypoints.append([2*half_box_len, 0, 0]) # Bottom right to Top Right
+
         self.relative_waypoints.append([0, 2*half_box_len, 0]) # Top Right to Top Left
         self.relative_waypoints.append([-2*half_box_len, 0, 0]) # Top Left to Bottom Left
         self.relative_waypoints.append([0, -2*half_box_len, 0]) # Bottom Left to Bottom Right
         self.relative_waypoints.append([2*half_box_len, 0, 0]) # Bottom right to Top Right
         
-        self.relative_waypoints.append([-half_box_len, half_box_len, 0]) # Top Left to Center
+        # self.relative_waypoints.append([-half_box_len, half_box_len, 0]) # Top Left to Center
 
         # Connect to Tello
-        self.is_drone_in_the_air = False
         self.command_lock = False
         self.tello = Tello('', 8889)  
         self.send_command_until_ack('command')
         self.send_command_until_ack('streamon')
 
     def check_battery(self):
+        while self.command_lock:
+            rospy.sleep(0.1)   
+        print("Checking battery percentage.")     
         if not self.command_lock:
             self.command_lock = True
 
@@ -132,7 +134,6 @@ class TelloVisualOdometry():
         # Land the drone.
         self.send_command_until_ack('land') 
         rospy.sleep(5)
-        self.is_drone_in_the_air = False
         print("Drone has landed.")
 
         # Print final battery percentage.
@@ -140,8 +141,7 @@ class TelloVisualOdometry():
 
     def __del__(self):
         print("TelloVisualOdometry object deconstructor called.")
-        if self.is_drone_in_the_air:
-            self.end()
+        self.end()
 
         # Delete tello object to close socket. 
         del self.tello
